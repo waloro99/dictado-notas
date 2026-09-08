@@ -121,6 +121,24 @@ class VentanaPrincipal:
 
 if __name__ == "__main__":
     import os
-    ruta_modelo = os.environ.get("MODELO_VOSK", "modelo_vosk_es")
+    import sys
+
+    # Cuando corre como .exe empaquetado (PyInstaller onefile), los
+    # archivos incluidos con --add-data se extraen a una carpeta temporal
+    # accesible via sys._MEIPASS -- una ruta relativa comun ("modelo_vosk_es")
+    # no la encuentra ahi, por eso hay que resolverla distinto en ese caso.
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        ruta_modelo = os.path.join(sys._MEIPASS, "modelo_vosk_es")
+    else:
+        ruta_modelo = os.environ.get("MODELO_VOSK", "modelo_vosk_es")
+
+    if not os.path.isdir(ruta_modelo):
+        messagebox.showerror(
+            "Modelo de voz no encontrado",
+            f"No se encontro el modelo de reconocimiento de voz en:\n{ruta_modelo}\n\n"
+            "Vuelve a instalar el programa. Si el problema sigue, avisa al soporte tecnico."
+        )
+        sys.exit(1)
+
     ventana = VentanaPrincipal(ruta_modelo)
     ventana.ejecutar()
