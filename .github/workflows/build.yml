@@ -1,0 +1,59 @@
+# Compila el .exe y el instalador automaticamente en la nube (Windows),
+# SIN que necesites tu propia PC con Windows. Solo tienes que subir este
+# proyecto a un repositorio de GitHub y este workflow corre solo.
+#
+# Como usarlo:
+#   1) Crea un repositorio en GitHub y sube esta carpeta completa.
+#   2) Descarga el modelo Vosk en espanol (vosk-model-small-es-0.42) y
+#      colocalo en la carpeta modelo_vosk_es/ antes de subir (o ajusta
+#      este workflow para que lo descargue el mismo, ver paso de abajo).
+#   3) En GitHub, pestana "Actions" -> este workflow corre solo al hacer
+#      push. Al terminar, el instalador queda descargable como
+#      "artifact" del run.
+
+name: build-instalador-windows
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+
+      - name: Descargar modelo Vosk en espanol (si no viene incluido)
+        run: |
+          if (!(Test-Path "modelo_vosk_es")) {
+            Invoke-WebRequest -Uri "https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip" -OutFile "modelo.zip"
+            Expand-Archive -Path "modelo.zip" -DestinationPath "."
+            Rename-Item -Path "vosk-model-small-es-0.42" -NewName "modelo_vosk_es"
+          }
+
+      - name: Compilar .exe con PyInstaller
+        run: |
+          pyinstaller build/dictado_notas.spec
+
+      - name: Instalar Inno Setup
+        run: |
+          choco install innosetup -y
+
+      - name: Compilar instalador final
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\instalador.iss
+
+      - name: Publicar instalador como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DictadoDeNotas_Setup
+          path: installer/Output/DictadoDeNotas_Setup.exe
