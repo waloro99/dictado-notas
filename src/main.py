@@ -28,7 +28,7 @@ from typing import Optional
 from excel_controller import ExcelController
 from speech_engine import MotorDeVoz
 from corrector import Corrector
-from numeros_es import texto_a_numero, numero_a_texto
+from numeros_es import texto_a_numero, extraer_numeros, numero_a_texto
 from tts import VozOffline
 
 
@@ -131,9 +131,13 @@ class Orquestador:
         self.callback_ui("texto_reconocido", {"texto": texto})
 
         if self.estado == "esperando_valor_correccion":
-            numero = texto_a_numero(texto)
-            if numero is not None:
-                self._aplicar_correccion_pendiente(numero)
+            numeros = extraer_numeros(texto)
+            if numeros:
+                if len(numeros) > 1:
+                    self.callback_ui("aviso", {
+                        "mensaje": f"Escuche varios numeros ({numeros}), use el primero: {numeros[0]}"
+                    })
+                self._aplicar_correccion_pendiente(numeros[0])
             else:
                 self.callback_ui("aviso", {
                     "mensaje": "Esperaba un numero para la correccion, no entendi. Repite el valor."
@@ -150,12 +154,13 @@ class Orquestador:
             self._iniciar_correccion(referencia)
             return
 
-        numero = texto_a_numero(texto)
-        if numero is not None:
-            self.excel.escribir_siguiente(numero)
+        numeros = extraer_numeros(texto)
+        if numeros:
+            for numero in numeros:
+                self.excel.escribir_siguiente(numero)
+                self.callback_ui("valor_escrito", {"valor": numero})
             hoja, fila, col = self.excel.celda_activa()
             self.celda_esperada = (hoja, fila, col)
-            self.callback_ui("valor_escrito", {"valor": numero})
             return
 
         self.callback_ui("no_reconocido", {"texto": texto})

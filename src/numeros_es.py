@@ -134,6 +134,46 @@ def generar_vocabulario_numeros() -> List[str]:
     return sorted(frases)
 
 
+def extraer_numeros(texto: str) -> List[int]:
+    """
+    Extrae TODOS los numeros que aparezcan en una frase reconocida, en
+    el orden en que aparecen.
+
+    Por que existe: en dictado rapido, el reconocedor de voz a veces
+    agrupa varias palabras-numero dichas seguidas en un solo resultado
+    (ej. 'cinco cinco', 'diez diez diez') en vez de devolver una por
+    una. Con solo texto_a_numero() esos casos se perdian por completo
+    (se marcaban como 'no entendido' y no se escribia nada). Esta
+    funcion recupera todos los numeros validos que aparezcan, en
+    orden, e ignora palabras sueltas que no sean numeros en vez de
+    descartar todo el resultado.
+    """
+    if not texto:
+        return []
+
+    t = _quitar_tildes(texto.strip().lower()).replace("-", " ")
+    palabras = [p for p in t.split(" ") if p]
+
+    resultado = []
+    i = 0
+    while i < len(palabras):
+        # intentar primero un compuesto de 3 palabras ("treinta y cinco")
+        if i + 2 < len(palabras) and palabras[i + 1] == "y":
+            compuesto = f"{palabras[i]} y {palabras[i + 2]}"
+            numero = texto_a_numero(compuesto)
+            if numero is not None:
+                resultado.append(numero)
+                i += 3
+                continue
+        # si no, una palabra suelta (o digito)
+        numero = texto_a_numero(palabras[i])
+        if numero is not None:
+            resultado.append(numero)
+        i += 1
+
+    return resultado
+
+
 def numero_a_texto(n: int) -> str:
     """Convierte un entero 0-100 a su forma hablada (para el TTS de 'repiteme')."""
     if n == 0:
