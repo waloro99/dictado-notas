@@ -7,18 +7,25 @@
 # "un solo click" sin que el usuario tenga que descargar nada aparte.
 
 import os
+from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
 raiz = os.path.abspath(os.path.join(os.path.dirname(SPEC), ".."))
 
+# vosk carga su libreria nativa (libvosk.dll) con ctypes en tiempo de
+# ejecucion, no con un "import" normal -- por eso PyInstaller no la
+# detecta solo y hay que forzar la recoleccion completa del paquete
+# (esto es lo que causaba el error "FileNotFoundError ...\vosk").
+datas_vosk, binarios_vosk, hidden_vosk = collect_all("vosk")
+
 a = Analysis(
     [os.path.join(raiz, "src", "ui.py")],
     pathex=[os.path.join(raiz, "src")],
-    binaries=[],
+    binaries=binarios_vosk,
     datas=[
         (os.path.join(raiz, "modelo_vosk_es"), "modelo_vosk_es"),
-    ],
-    hiddenimports=["vosk", "sounddevice", "pyttsx3.drivers", "pyttsx3.drivers.sapi5"],
+    ] + datas_vosk,
+    hiddenimports=["vosk", "sounddevice", "pyttsx3.drivers", "pyttsx3.drivers.sapi5"] + hidden_vosk,
     hookspath=[],
     runtime_hooks=[],
     excludes=[],
